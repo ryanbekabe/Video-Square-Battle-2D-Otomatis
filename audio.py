@@ -34,6 +34,17 @@ def _elimination():
     return out
 
 
+def _pickup():
+    dur = 0.22
+    out = array("f")
+    phase = 0.0
+    for i in range(int(dur * RATE)):
+        t = i / RATE
+        phase += TAU * (700 + 2600 * t) / RATE
+        out.append(math.sin(phase) * 0.4 * math.exp(-t * 9))
+    return out
+
+
 def _victory():
     notes = [523.25, 659.25, 783.99, 1046.5]  # C5 E5 G5 C6
     dur = 1.8
@@ -85,7 +96,7 @@ def build_soundtrack(path, events, fps, total_frames, seed=0, music_gain=0.35):
         buf[n - fade + i] *= 1 - i / fade
 
     hits = [_hit(rng) for _ in range(6)]
-    elim, win = _elimination(), _victory()
+    elim, win, pickup = _elimination(), _victory(), _pickup()
     for kind, frame in events:
         start = int(frame / fps * RATE)
         if kind == "hit":
@@ -94,6 +105,8 @@ def build_soundtrack(path, events, fps, total_frames, seed=0, music_gain=0.35):
             _add(buf, elim, start)
         elif kind == "win":
             _add(buf, win, start)
+        elif kind == "pickup":
+            _add(buf, pickup, start)
 
     pcm = array("h", (int(max(-1.0, min(1.0, v * 0.8)) * 32767) for v in buf))
     with wave.open(path, "wb") as w:

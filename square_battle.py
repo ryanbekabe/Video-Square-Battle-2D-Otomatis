@@ -1,33 +1,25 @@
 """Square Battle 2D — generator video pertandingan kotak secara otomatis."""
-import argparse
 import math
-import os
 import random
-import shutil
-import subprocess
 
-os.environ.setdefault("SDL_VIDEODRIVER", "dummy")   # jalan tanpa membuka jendela
-os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+from engine import (BG, FPS, GRAY, PARTICIPANTS, WHITE, WINNER_SECONDS, Canvas, VideoWriter,
+                    run_cli)
 import pygame
 
-import audio
-
-W, H, FPS = 1080, 1920, 60
 ARENA = pygame.Rect(90, 460, 900, 900)
 MAX_SECONDS = 90
-WINNER_SECONDS = 3
 SIZE = 70
 HIT_IFRAMES = 6            # frame kebal setelah terkena, agar satu tabrakan = satu damage
 MODES = ("klasik", "menyusut")
 SHRINK_START, SHRINK_END, MIN_ARENA = 10, 60, 360   # detik, detik, piksel
 
-COLORS = [("Merah", (235, 64, 52)), ("Biru", (52, 120, 235)),
-          ("Hijau", (46, 204, 113)), ("Kuning", (241, 196, 15)),
-          ("Ungu", (155, 89, 182)), ("Oranye", (230, 126, 34))]
-
-BG = (18, 18, 28)
-WHITE = (255, 255, 255)
-GRAY = (110, 110, 120)
+CONCEPT = {
+    "id": "square_battle",
+    "nama": "Square Battle",
+    "deskripsi": "6 kotak saling bertabrakan dan kehilangan HP; kotak terakhir yang bertahan menang.",
+    "mode": MODES,
+    "durasi_maks": MAX_SECONDS,
+}
 
 
 class Square:
@@ -99,26 +91,10 @@ def hp_color(hp):
     return (int(230 * (1 - r) + 80 * r), int(60 * (1 - r) + 220 * r), 90)
 
 
-class Renderer:
-    def __init__(self):
-        pygame.init()
-        self.screen = pygame.Surface((W, H))
-        self.font_big = pygame.font.SysFont("arial", 84, bold=True)
-        self.font_mid = pygame.font.SysFont("arial", 48, bold=True)
-        self.font_small = pygame.font.SysFont("arial", 34, bold=True)
-        self.overlay = pygame.Surface((ARENA.width, 260), pygame.SRCALPHA)
-        self.overlay.fill((0, 0, 0, 190))
-
-    def text(self, font, msg, color, center):
-        img = font.render(msg, True, color)
-        self.screen.blit(img, img.get_rect(center=center))
-
+class Renderer(Canvas):
     def draw(self, squares, arena, seconds, max_seconds, mode, winner, reason):
         s = self.screen
-        s.fill(BG)
-        self.text(self.font_big, "SQUARE BATTLE", WHITE, (W // 2, 220))
-        self.text(self.font_small, f"Mode: {mode.upper()}", GRAY, (W // 2, 300))
-        self.text(self.font_mid, f"{seconds}s / {max_seconds}s", (200, 200, 210), (W // 2, 390))
+        self.header("SQUARE BATTLE", mode, seconds, max_seconds)
 
         if arena != ARENA:
             pygame.draw.rect(s, (55, 30, 40), ARENA)
@@ -148,14 +124,7 @@ class Renderer:
             s.blit(hp_img, (x + 360 - hp_img.get_width(), y + 6))
 
         if winner:
-            box = self.overlay.get_rect(center=ARENA.center)
-            s.blit(self.overlay, box)
-            self.text(self.font_big, f"{winner.name.upper()} MENANG!", winner.color,
-                      (W // 2, box.centery - 40))
-            self.text(self.font_small, reason, WHITE, (W // 2, box.centery + 50))
-
-    def frame_bytes(self):
-        return pygame.image.tobytes(self.screen, "RGB")
+            self.banner(f"{winner.name.upper()} MENANG!", winner.color, reason, ARENA.center)
 
 
 def pick_winner(squares, frame):
@@ -167,30 +136,37 @@ def pick_winner(squares, frame):
     return max(last, key=lambda s: s.hp)
 
 
-def ffmpeg_writer(output):
-    if not shutil.which("ffmpeg"):
-        raise SystemExit("FFmpeg tidak ditemukan. Pasang FFmpeg dan pastikan ada di PATH.")
-    return subprocess.Popen(
-        ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
-         "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-         "-c:v", "libx264", "-preset", "fast", "-crf", "20", "-pix_fmt", "yuv420p", output],
-        stdin=subprocess.PIPE)
-
-
 def render(output="battle.mp4", seed=None, mode="klasik", with_audio=True,
-           max_seconds=MAX_SECONDS):
+           max_seconds=MAX_SECONDS, progress=None):
     """Simulasikan satu pertandingan, render ke MP4, dan kembalikan metadata hasilnya."""
     if mode not in MODES:
         raise ValueError(f"Mode tidak dikenal: {mode} (pilihan: {', '.join(MODES)})")
     if seed is None:
         seed = random.randrange(2 ** 31)
     rng = random.Random(seed)
-    squares = [Square(n, c, rng) for n, c in COLORS]
+    squares = [Square(n, c, rng) for n, c in PARTICIPANTS]
     renderer = Renderer()
+    with VideoWriter(output, with_audio, progress) as video:
+        frame, events, winner, reason, end_frame, eliminations = _simulate(
+            squares, renderer, video, rng, mode, max_seconds)
+        video.finish(events, seed)
 
-    video_path = output + ".video.mp4" if with_audio else output
-    ffmpeg = ffmpeg_writer(video_path)
+    return {
+        "konsep": CONCEPT["id"],
+        "output": output,
+        "seed": seed,
+        "mode": mode,
+        "pemenang": winner.name,
+        "alasan": reason,
+        "durasi_pertandingan": round(end_frame / FPS, 2),
+        "durasi_video": round(frame / FPS, 2),
+        "eliminasi": eliminations,
+        "statistik": {"hp_pemenang": max(winner.hp, 0),
+                      "jumlah_tabrakan": sum(1 for k, _ in events if k == "hit")},
+    }
 
+
+def _simulate(squares, renderer, video, rng, mode, max_seconds):
     frame, winner, end_frame, reason = 0, None, None, ""
     arena = ARENA
     events, eliminations = [], []
@@ -218,50 +194,10 @@ def render(output="battle.mp4", seed=None, mode="klasik", with_audio=True,
             break
         seconds = (frame if end_frame is None else end_frame) // FPS
         renderer.draw(squares, arena, seconds, max_seconds, mode, winner, reason)
-        ffmpeg.stdin.write(renderer.frame_bytes())
+        video.write(renderer)
         frame += 1
-    ffmpeg.stdin.close()
-    if ffmpeg.wait() != 0:
-        raise RuntimeError(f"FFmpeg gagal menulis {video_path}")
-
-    if with_audio:
-        wav_path = output + ".audio.wav"
-        audio.build_soundtrack(wav_path, events, FPS, frame, seed=seed)
-        result = subprocess.run(
-            ["ffmpeg", "-y", "-loglevel", "error", "-i", video_path, "-i", wav_path,
-             "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", output])
-        os.remove(video_path)
-        os.remove(wav_path)
-        if result.returncode != 0:
-            raise RuntimeError(f"FFmpeg gagal menggabungkan audio ke {output}")
-
-    return {
-        "output": output,
-        "seed": seed,
-        "mode": mode,
-        "pemenang": winner.name,
-        "hp_pemenang": max(winner.hp, 0),
-        "alasan": reason,
-        "durasi_pertandingan": round(end_frame / FPS, 2),
-        "durasi_video": round(frame / FPS, 2),
-        "jumlah_tabrakan": sum(1 for k, _ in events if k == "hit"),
-        "eliminasi": eliminations,
-    }
-
-
-def main():
-    ap = argparse.ArgumentParser(description="Render satu video Square Battle.")
-    ap.add_argument("-o", "--output", default="battle.mp4")
-    ap.add_argument("--seed", type=int, help="seed acak (untuk membuat ulang video yang sama)")
-    ap.add_argument("--mode", choices=MODES, default="klasik")
-    ap.add_argument("--no-audio", action="store_true", help="render tanpa efek suara/musik")
-    ap.add_argument("--max-seconds", type=int, default=MAX_SECONDS,
-                    help="batas durasi pertandingan (detik)")
-    args = ap.parse_args()
-    meta = render(args.output, args.seed, args.mode, not args.no_audio, args.max_seconds)
-    print(f"Selesai: {meta['output']} | seed {meta['seed']} | pemenang {meta['pemenang']} "
-          f"({meta['alasan']}, {meta['durasi_video']}s)")
+    return frame, events, winner, reason, end_frame, eliminations
 
 
 if __name__ == "__main__":
-    main()
+    run_cli(CONCEPT, render)

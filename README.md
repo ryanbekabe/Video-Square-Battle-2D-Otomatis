@@ -36,39 +36,62 @@ Video dibuat dari simulasi fisika sederhana yang direkam frame demi frame:
 
 ## 5. Struktur Proyek & Cara Menjalankan
 
+### Konsep video
+
+| Konsep (`id`) | File | Mode | Durasi maks | Inti permainan |
+|---|---|---|---|---|
+| Square Battle (`square_battle`) | `square_battle.py` | `klasik`, `menyusut` | 90 s | 6 kotak bertabrakan dan kehilangan HP; kotak terakhir menang |
+| Perang Suit (`perang_suit`) | `rps_war.py` | `seimbang`, `underdog` | 60 s | Batu–Gunting–Kertas; yang kalah berubah jenis; menang jika menguasai arena |
+| Sumo Bola (`sumo`) | `sumo.py` | `klasik`, `menyusut` | 60 s | Bola berwajah saling dorong; keluar ring = kalah; duel final memicu *Sudden Death* |
+| Perebutan Wilayah (`wilayah`) | `wilayah.py` | `klasik`, `power-up` | 45 s | Kotak mengecat lantai; wilayah terluas menang; bintang power-up memberi cipratan besar |
+
+### File pendukung
+
 | File | Isi |
 |---|---|
-| `square_battle.py` | Simulasi, render frame (Pygame), dan encode MP4 (FFmpeg). Bisa dijalankan sendiri. |
-| `audio.py` | Sintesis efek suara (tabrakan, eliminasi, kemenangan) dan musik latar — tanpa file aset. |
-| `batch.py` | Produksi massal: banyak video sekaligus + metadata JSON (judul, deskripsi, tag) untuk unggahan. |
+| `engine.py` | Bagian bersama: kanvas & teks, encoder FFmpeg, penggabungan audio, CLI standar |
+| `audio.py` | Sintesis efek suara (tabrakan, eliminasi, power-up, kemenangan) dan musik latar — tanpa file aset |
+| `concepts.py` | Daftar konsep; daftarkan konsep baru di sini agar muncul di `batch.py` dan dashboard |
+| `production.py` | Penomoran episode, metadata unggahan (judul, deskripsi, tag), daftar video, klasemen |
+| `batch.py` | Produksi massal dari baris perintah |
+| `dashboard.py`, `dashboard/index.html` | Dashboard web lokal untuk mengelola produksi |
+
+### Menjalankan
 
 ```bash
 pip install -r requirements.txt
 
-# Satu video
-python square_battle.py                              # -> battle.mp4
+# Dashboard (buka http://127.0.0.1:8000)
+python dashboard.py
+python dashboard.py --port 9000 --no-browser
+
+# Satu video dari konsep tertentu
 python square_battle.py --seed 42 --mode menyusut -o final.mp4
-python square_battle.py --no-audio --max-seconds 20  # uji cepat
+python rps_war.py --mode underdog
+python sumo.py --no-audio --max-seconds 20      # uji cepat
+python wilayah.py --mode power-up
 
 # Banyak video sekaligus (ke folder output/)
-python batch.py -n 10                 # mode acak, seed acak
-python batch.py -n 5 --seed 1000 --mode klasik --start 13
+python batch.py -n 10 --konsep sumo             # mode acak, seed acak
+python batch.py -n 5 --konsep acak --seed 1000  # konsep acak, bisa dibuat ulang
 ```
 
-Opsi `square_battle.py`:
+Opsi yang sama untuk setiap file konsep: `-o/--output`, `--seed`, `--mode`, `--no-audio`, `--max-seconds`.
+Seed yang sama selalu menghasilkan pertandingan yang sama.
 
-| Opsi | Keterangan |
-|---|---|
-| `-o, --output` | Nama file hasil (default `battle.mp4`) |
-| `--seed` | Seed acak; seed yang sama selalu menghasilkan pertandingan yang sama |
-| `--mode` | `klasik` atau `menyusut` (arena mengecil mulai detik 10 hingga detik 60) |
-| `--no-audio` | Render tanpa suara |
-| `--max-seconds` | Batas durasi pertandingan (default 90) |
+### Dashboard
 
-Hasil `batch.py` di folder `output/`:
-- `battle_NNN.mp4` — video
-- `battle_NNN.json` — seed, mode, pemenang, urutan eliminasi, judul, deskripsi, dan tag
-- `manifest.jsonl` — ringkasan semua video yang pernah dirender (satu baris per video)
+Dashboard hanya bisa diakses dari komputer ini (`127.0.0.1`). Fiturnya:
+- **Buat Video** — pilih konsep, mode (atau acak), jumlah, seed, durasi maksimum, dan audio; video masuk antrean.
+- **Antrean** — progres render secara langsung, tombol batal, dan riwayat (render berjalan satu per satu).
+- **Galeri** — putar video, filter per konsep, cari pemenang, salin judul/deskripsi + tagar, unduh, render ulang dengan seed yang sama, hapus.
+- **Klasemen** — jumlah kemenangan dan rasio menang setiap peserta per konsep.
+
+### Hasil di folder `output/`
+
+- `<konsep>_NNN.mp4` — video (nomor episode dihitung per konsep)
+- `<konsep>_NNN.json` — seed, mode, pemenang, alasan, urutan eliminasi, statistik, judul, deskripsi, tag
+- `manifest.jsonl` — log semua video yang pernah dirender (satu baris per video)
 
 ## 6. Tahapan Pengembangan
 
@@ -87,10 +110,10 @@ Hasil `batch.py` di folder `output/`:
 - Gabungkan efek suara dan musik latar ke video menggunakan FFmpeg
 - Efek suara sangat berpengaruh pada kesan "satisfying"
 
-### Tahap 4 — Variasi Konten
+### Tahap 4 — Variasi Konten (sebagian selesai — lihat `IDE_KONTEN.md` untuk ide lain)
 - **Mode balapan:** kotak berlomba menuju garis finish dengan rintangan
 - **Arena menyusut:** ruang gerak mengecil seiring waktu (selesai — `--mode menyusut`)
-- **Power-up:** item penambah kecepatan, perisai, atau penyembuh HP
+- **Power-up:** item penambah kecepatan, perisai, atau penyembuh HP (selesai di `wilayah.py --mode power-up`)
 - **Senjata:** kotak dapat menembak atau memiliki kemampuan khusus
 - **Format seri/turnamen:** pemenang melaju ke babak berikutnya, membangun cerita antar video
 

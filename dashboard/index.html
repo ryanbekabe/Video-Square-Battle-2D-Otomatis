@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Studio Simulasi</title>
+<style>
+  :root {
+    --bg: #f4f4f7; --panel: #ffffff; --panel-2: #f0f0f4; --text: #1b1b24; --muted: #6b6b7b;
+    --border: #e1e1e8; --accent: #4f5bd5; --accent-text: #ffffff; --ok: #1f9d55; --warn: #c27c0e;
+    --bad: #d64545; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12121c; --panel: #1b1b28; --panel-2: #232333; --text: #ececf3; --muted: #9a9aae;
+      --border: #2d2d40; --accent: #7b86ff; --accent-text: #0e0e18; --ok: #4ccf86; --warn: #f0b44c;
+      --bad: #ff6b6b; --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px;
+           padding: 18px 24px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  header h1 { font-size: 20px; margin: 0; letter-spacing: -.01em; }
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto; }
+  .stat { background: var(--panel-2); border-radius: 10px; padding: 6px 12px; font-size: 13px; color: var(--muted); }
+  .stat b { color: var(--text); font-size: 15px; margin-right: 4px; }
+  main { display: grid; grid-template-columns: 380px 1fr; gap: 20px; padding: 20px 24px; align-items: start; }
+  main > * { min-width: 0; }
+  @media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); padding: 16px; } header { padding: 14px 16px; } }
+  @media (max-width: 520px) { .filters { margin-left: 0; width: 100%; } .filters select, .filters input { flex: 1; min-width: 0; } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+           padding: 18px; box-shadow: var(--shadow); }
+  .panel + .panel { margin-top: 20px; }
+  h2 { font-size: 16px; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
+  h2 .spacer { flex: 1; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
+  input, select { width: 100%; padding: 9px 11px; border-radius: 9px; border: 1px solid var(--border);
+                  background: var(--panel-2); color: var(--text); font: inherit; }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .concepts { display: grid; gap: 8px; }
+  .concept { display: block; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+             cursor: pointer; margin: 0; color: var(--text); background: var(--panel-2); }
+  .concept input { display: none; }
+  .concept strong { display: block; font-size: 14px; }
+  .concept span { font-size: 12.5px; color: var(--muted); }
+  .concept:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .check { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 14px; margin-top: 14px; }
+  .check input { width: auto; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  button { font: inherit; border-radius: 9px; border: 1px solid var(--border); background: var(--panel-2);
+           color: var(--text); padding: 7px 12px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent);
+                   width: 100%; padding: 11px; margin-top: 16px; font-weight: 600; }
+  button.danger:hover { border-color: var(--bad); color: var(--bad); }
+  button.small { padding: 4px 9px; font-size: 13px; }
+  .jobs { display: grid; gap: 10px; }
+  .job { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .job-top { display: flex; align-items: center; gap: 8px; }
+  .job-top strong { flex: 1; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .job .meta { font-size: 12.5px; color: var(--muted); margin-top: 4px; overflow-wrap: anywhere; }
+  .bar { height: 6px; background: var(--panel-2); border-radius: 99px; overflow: hidden; margin-top: 8px; }
+  .bar > div { height: 100%; background: var(--accent); transition: width .4s; }
+  .badge { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--panel-2);
+           color: var(--muted); white-space: nowrap; }
+  .badge.berjalan { color: var(--accent); } .badge.selesai { color: var(--ok); }
+  .badge.gagal { color: var(--bad); } .badge.dibatalkan { color: var(--warn); }
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 18px 0; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .tab { background: transparent; border-color: transparent; color: var(--muted); font-weight: 600; }
+  .tab.active { background: var(--panel); border-color: var(--border); color: var(--text); }
+  .filters { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+  .filters select, .filters input { width: auto; min-width: 150px; padding: 6px 10px; }
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+          box-shadow: var(--shadow); display: flex; flex-direction: column; }
+  .card video { width: 100%; aspect-ratio: 9 / 16; background: #000; display: block; max-height: 420px; object-fit: contain; }
+  .card .missing { aspect-ratio: 9 / 16; max-height: 420px; display: grid; place-items: center; color: var(--muted);
+                   background: var(--panel-2); font-size: 13px; }
+  .card-body { padding: 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .card-body h3 { font-size: 14px; margin: 0; line-height: 1.35; }
+  .tags { display: flex; gap: 5px; flex-wrap: wrap; }
+  .winner { font-size: 13.5px; }
+  .winner b { font-weight: 700; }
+  .card .meta { font-size: 12px; color: var(--muted); }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 6px; }
+  details { font-size: 12.5px; color: var(--muted); }
+  details summary { cursor: pointer; }
+  details pre { white-space: pre-wrap; font: 12px/1.45 ui-monospace, Consolas, monospace; background: var(--panel-2);
+                padding: 8px; border-radius: 8px; color: var(--text); margin: 6px 0 0; max-height: 220px; overflow: auto; }
+  .standings { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td, th { padding: 7px 4px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .pct { display: flex; align-items: center; gap: 8px; }
+  .pct .bar { flex: 1; margin: 0; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px); opacity: 0;
+           background: var(--text); color: var(--bg); padding: 9px 16px; border-radius: 10px; font-size: 14px;
+           transition: .25s; pointer-events: none; z-index: 10; }
+  .toast.show { opacity: 1; transform: translateX(-50%); }
+  .error { color: var(--bad); font-size: 13px; margin-top: 10px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Studio Simulasi</h1>
+  <div class="stats">
+    <div class="stat"><b id="st-video">0</b>video</div>
+    <div class="stat"><b id="st-durasi">0m</b>total durasi</div>
+    <div class="stat"><b id="st-antre">0</b>dalam antrean</div>
+  </div>
+</header>
+
+<main>
+  <aside>
+    <section class="panel">
+      <h2>Buat Video</h2>
+      <form id="form">
+        <label>Konsep</label>
+        <div class="concepts" id="concepts"></div>
+        <div class="row">
+          <div>
+            <label for="mode">Mode</label>
+            <select id="mode"></select>
+          </div>
+          <div>
+            <label for="jumlah">Jumlah video</label>
+            <input id="jumlah" type="number" min="1" max="50" value="1">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="seed">Seed (opsional)</label>
+            <input id="seed" type="number" min="0" placeholder="acak">
+          </div>
+          <div>
+            <label for="durasi">Durasi maks (detik)</label>
+            <input id="durasi" type="number" min="5" max="300">
+          </div>
+        </div>
+        <div class="hint">Seed yang sama menghasilkan video yang sama. Untuk banyak video, video ke-i memakai seed + i.</div>
+        <label class="check"><input id="audio" type="checkbox" checked> Sertakan efek suara &amp; musik</label>
+        <button class="primary" type="submit">Tambah ke antrean</button>
+        <div class="error" id="form-error" hidden></div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Antrean <span class="spacer"></span>
+        <button class="small" id="clear-jobs" type="button">Bersihkan riwayat</button></h2>
+      <div class="jobs" id="jobs"></div>
+    </section>
+  </aside>
+
+  <section>
+    <div class="tabs">
+      <button class="tab active" data-tab="galeri" type="button">Galeri</button>
+      <button class="tab" data-tab="klasemen" type="button">Klasemen</button>
+      <div class="filters" id="filters">
+        <select id="f-konsep"><option value="">Semua konsep</option></select>
+        <input id="f-cari" type="search" placeholder="Cari pemenang / judul">
+      </div>
+    </div>
+    <div id="tab-galeri">
+      <div class="gallery" id="gallery"></div>
+    </div>
+    <div id="tab-klasemen" hidden>
+      <div class="standings" id="standings"></div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const STATUS = { antre: "Antre", berjalan: "Berjalan", selesai: "Selesai", gagal: "Gagal", dibatalkan: "Dibatalkan" };
+
+let concepts = [];
+let videos = [];
+let lastFinished = new Set();
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+function toast(msg) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove("show"), 1800);
+}
+
+const conceptName = (id) => (concepts.find((c) => c.id === id) || { nama: id }).nama;
+
+// ---------- Form ----------
+function renderConcepts() {
+  $("#concepts").innerHTML = concepts.map((c, i) => `
+    <label class="concept"><input type="radio" name="konsep" value="${esc(c.id)}" ${i === 0 ? "checked" : ""}>
+      <strong>${esc(c.nama)}</strong><span>${esc(c.deskripsi)}</span></label>`).join("");
+  $("#f-konsep").innerHTML = `<option value="">Semua konsep</option>` +
+    concepts.map((c) => `<option value="${esc(c.id)}">${esc(c.nama)}</option>`).join("");
+  document.querySelectorAll("input[name=konsep]").forEach((r) => r.addEventListener("change", syncMode));
+  syncMode();
+}
+
+function selectedConcept() {
+  const id = document.querySelector("input[name=konsep]:checked")?.value;
+  return concepts.find((c) => c.id === id);
+}
+
+function syncMode() {
+  const c = selectedConcept();
+  if (!c) return;
+  $("#mode").innerHTML = `<option value="acak">Acak</option>` +
+    c.mode.map((m) => `<option value="${esc(m)}">${esc(m)}</option>`).join("");
+  $("#durasi").placeholder = c.durasi_maks;
+}
+
+async function submitJob(payload) {
+  const created = await api("/api/job", { method: "POST", body: JSON.stringify(payload) });
+  toast(`${created.length} video ditambahkan ke antrean`);
+  refreshJobs();
+}
+
+$("#form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const err = $("#form-error");
+  err.hidden = true;
+  try {
+    await submitJob({
+      konsep: selectedConcept().id,
+      mode: $("#mode").value,
+      jumlah: Number($("#jumlah").value || 1),
+      seed: $("#seed").value === "" ? null : Number($("#seed").value),
+      durasi_maks: $("#durasi").value === "" ? null : Number($("#durasi").value),
+      audio: $("#audio").checked,
+    });
+  } catch (ex) {
+    err.textContent = ex.message;
+    err.hidden = false;
+  }
+});
+
+// ---------- Antrean ----------
+async function refreshJobs() {
+  let jobs;
+  try { jobs = await api("/api/job"); } catch { return; }
+  const active = jobs.filter((j) => j.status === "antre" || j.status === "berjalan");
+  $("#st-antre").textContent = active.length;
+  $("#jobs").innerHTML = jobs.length ? jobs.map((j) => {
+    const seed = j.hasil?.seed ?? j.seed;
+    const mode = j.hasil?.mode ?? j.mode;
+    let meta = `Mode ${esc(mode)} · seed ${seed ?? "acak"}`;
+    if (j.status === "berjalan") meta += ` · ${j.detik_video}s video dirender`;
+    if (j.status === "selesai") meta = `${esc(j.hasil.judul)} · pemenang ${esc(j.hasil.pemenang)}`;
+    if (j.status === "gagal") meta = `Error: ${esc(j.pesan)}`;
+    const cancel = active.includes(j) ? `<button class="small danger" data-batal="${j.id}" type="button">Batal</button>` : "";
+    const bar = j.status === "berjalan" ? `<div class="bar"><div style="width:${j.progress}%"></div></div>` : "";
+    return `<div class="job"><div class="job-top"><strong>${esc(conceptName(j.konsep))}</strong>
+      <span class="badge ${j.status}">${STATUS[j.status] || j.status}${j.status === "berjalan" ? ` ${Math.round(j.progress)}%` : ""}</span>${cancel}</div>
+      <div class="meta">${meta}</div>${bar}</div>`;
+  }).join("") : `<div class="empty">Belum ada antrean.</div>`;
+
+  const finished = new Set(jobs.filter((j) => j.status === "selesai").map((j) => j.id));
+  if ([...finished].some((id) => !lastFinished.has(id))) refreshVideos();
+  lastFinished = finished;
+  clearTimeout(refreshJobs.timer);
+  refreshJobs.timer = setTimeout(refreshJobs, active.length ? 1500 : 5000);
+}
+
+$("#jobs").addEventListener("click", async (e) => {
+  const id = e.target.dataset.batal;
+  if (!id) return;
+  await api(`/api/job/${id}/batal`, { method: "POST" }).catch((ex) => toast(ex.message));
+  refreshJobs();
+});
+$("#clear-jobs").addEventListener("click", async () => {
+  await api("/api/job/bersihkan", { method: "POST" });
+  refreshJobs();
+});
+
+// ---------- Galeri ----------
+async function refreshVideos() {
+  try { videos = await api("/api/video"); } catch { return; }
+  $("#st-video").textContent = videos.length;
+  const total = videos.reduce((s, v) => s + (v.durasi_video || 0), 0);
+  $("#st-durasi").textContent = total >= 3600 ? `${(total / 3600).toFixed(1)}j` : `${Math.round(total / 60)}m`;
+  renderGallery();
+  refreshStandings();
+}
+
+function renderGallery() {
+  const fk = $("#f-konsep").value;
+  const q = $("#f-cari").value.trim().toLowerCase();
+  const list = videos.filter((v) => (!fk || v.konsep === fk) &&
+    (!q || `${v.pemenang} ${v.judul || ""}`.toLowerCase().includes(q)));
+  if (!list.length) {
+    $("#gallery").innerHTML = `<div class="empty" style="grid-column:1/-1">${videos.length ? "Tidak ada video yang cocok." : "Belum ada video. Buat video pertama dari panel kiri."}</div>`;
+    return;
+  }
+  // Pertahankan elemen video yang sudah ada agar pemutaran tidak terputus saat refresh
+  const existing = new Map([...document.querySelectorAll("#gallery .card")].map((el) => [el.dataset.file, el]));
+  const frag = document.createDocumentFragment();
+  for (const v of list) {
+    const key = `${v.file}|${v.dibuat}`;
+    const old = existing.get(key);
+    frag.appendChild(old || cardFor(v, key));
+  }
+  $("#gallery").replaceChildren(frag);
+}
+
+function cardFor(v, key) {
+  const el = document.createElement("article");
+  el.className = "card";
+  el.dataset.file = key;
+  const stats = { statistik: v.statistik, eliminasi: v.eliminasi };
+  el.innerHTML = `
+    ${v.ada_video ? `<video src="/output/${encodeURIComponent(v.file)}#t=1" controls preload="metadata" playsinline></video>`
+                  : `<div class="missing">File video tidak ditemukan</div>`}
+    <div class="card-body">
+      <h3>${esc(v.judul || v.file)}</h3>
+      <div class="tags"><span class="badge">${esc(conceptName(v.konsep))}</span>
+        <span class="badge">${esc(v.mode)}</span><span class="badge">${v.durasi_video ?? "?"}s</span></div>
+      <div class="winner">Pemenang: <b>${esc(v.pemenang)}</b></div>
+      <div class="meta">${esc(v.alasan || "")}<br>Seed ${esc(v.seed)} · ${new Date(v.dibuat * 1000).toLocaleString("id-ID")}</div>
+      <details><summary>Statistik &amp; deskripsi</summary><pre>${esc(v.deskripsi || "")}</pre><pre>${esc(JSON.stringify(stats, null, 2))}</pre></details>
+      <div class="actions">
+        <button class="small" data-act="judul" type="button">Salin judul</button>
+        <button class="small" data-act="deskripsi" type="button">Salin deskripsi</button>
+        ${v.ada_video ? `<a download href="/output/${encodeURIComponent(v.file)}"><button class="small" type="button">Unduh</button></a>` : ""}
+        <button class="small" data-act="ulang" type="button" title="Render ulang dengan seed &amp; mode yang sama">Render ulang</button>
+        <button class="small danger" data-act="hapus" type="button">Hapus</button>
+      </div>
+    </div>`;
+  el.addEventListener("click", (e) => onCardAction(e, v));
+  return el;
+}
+
+async function copy(text, label) {
+  try { await navigator.clipboard.writeText(text); toast(`${label} disalin`); }
+  catch { toast("Gagal menyalin ke clipboard"); }
+}
+
+async function onCardAction(e, v) {
+  const act = e.target.dataset.act;
+  if (act === "judul") copy(v.judul || "", "Judul");
+  if (act === "deskripsi") copy(`${v.deskripsi || ""}\n\n${(v.tag || []).map((t) => "#" + t.replace(/\s+/g, "")).join(" ")}`, "Deskripsi");
+  if (act === "ulang") {
+    await submitJob({ konsep: v.konsep, mode: v.mode, jumlah: 1, seed: v.seed, audio: true }).catch((ex) => toast(ex.message));
+  }
+  if (act === "hapus" && confirm(`Hapus ${v.file} beserta metadatanya?`)) {
+    try {
+      await api(`/api/video/${encodeURIComponent(v.file)}`, { method: "DELETE" });
+      toast("Video dihapus");
+      refreshVideos();
+    } catch (ex) { toast(ex.message); }
+  }
+}
+
+$("#f-konsep").addEventListener("change", renderGallery);
+$("#f-cari").addEventListener("input", renderGallery);
+
+// ---------- Klasemen ----------
+async function refreshStandings() {
+  let table;
+  try { table = await api("/api/klasemen"); } catch { return; }
+  const ids = Object.keys(table);
+  $("#standings").innerHTML = ids.length ? ids.map((id) => `
+    <div class="panel" style="margin:0">
+      <h2>${esc(conceptName(id))}<span class="spacer"></span><span class="badge">${table[id].total} pertandingan</span></h2>
+      <table><thead><tr><th>#</th><th>Peserta</th><th class="num">Menang</th><th style="width:40%">Rasio</th></tr></thead><tbody>
+      ${table[id].peringkat.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.nama)}</td><td class="num">${r.menang}</td>
+        <td><div class="pct"><div class="bar"><div style="width:${r.persen}%"></div></div><span class="badge">${r.persen}%</span></div></td></tr>`).join("")}
+      </tbody></table>
+    </div>`).join("") : `<div class="empty">Klasemen muncul setelah ada video.</div>`;
+}
+
+// ---------- Tab ----------
+document.querySelectorAll(".tab").forEach((btn) => btn.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b === btn));
+  $("#tab-galeri").hidden = btn.dataset.tab !== "galeri";
+  $("#tab-klasemen").hidden = btn.dataset.tab !== "klasemen";
+  $("#filters").hidden = btn.dataset.tab !== "galeri";
+}));
+
+(async function init() {
+  concepts = await api("/api/konsep");
+  renderConcepts();
+  await refreshVideos();
+  refreshJobs();
+})();
+</script>
+</body>
+</html>
