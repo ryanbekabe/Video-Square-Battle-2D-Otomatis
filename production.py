@@ -57,8 +57,28 @@ def describe(meta, concept, episode):
     if meta.get("eliminasi"):
         lines += ["", "Urutan tereliminasi:"]
         lines += [f"- {e['nama']} ({e['detik']}s)" for e in meta["eliminasi"]]
+    stats = meta.get("statistik") or {}
+    if stats:
+        lines += ["", "Statistik pertandingan:"]
+        lines += [f"- {label}: {value}" for label, value in _stat_lines(stats)]
     lines += ["", "Tebak pemenang berikutnya di kolom komentar!", f"Seed: {meta['seed']}"]
     return "\n".join(lines)
+
+
+def _stat_lines(stats, prefix=""):
+    """Ratakkan statistik untuk deskripsi unggahan yang mudah dibaca manusia."""
+    rows = []
+    for key, value in stats.items():
+        label = f"{prefix} - {key}" if prefix else key.replace("_", " ").capitalize()
+        if value is None:
+            continue
+        if isinstance(value, dict):
+            rows.extend(_stat_lines(value, label))
+        elif isinstance(value, bool):
+            rows.append((label, "Ya" if value else "Tidak"))
+        else:
+            rows.append((label, value))
+    return rows
 
 
 def produce(concept_id, mode="acak", seed=None, out_dir=OUT_DIR, with_audio=True,

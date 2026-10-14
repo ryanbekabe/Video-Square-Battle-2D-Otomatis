@@ -159,6 +159,7 @@ def render(output="perang_suit.mp4", seed=None, mode="seimbang", with_audio=True
     renderer = Renderer()
 
     with VideoWriter(output, with_audio, progress) as video:
+        video.write_intro(renderer, CONCEPT["nama"])
         frame, winner, end_frame, reason = 0, None, None, ""
         events, eliminations, history = [], [], []
         conversions = 0
@@ -204,7 +205,7 @@ def render(output="perang_suit.mp4", seed=None, mode="seimbang", with_audio=True
         "pemenang": KINDS[winner][0],
         "alasan": reason,
         "durasi_pertandingan": round(end_frame / FPS, 2),
-        "durasi_video": round(frame / FPS, 2),
+        "durasi_video": round(video.frames / FPS, 2),
         "eliminasi": eliminations,
         "statistik": {
             "jumlah_konversi": conversions,

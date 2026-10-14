@@ -147,6 +147,7 @@ def render(output="battle.mp4", seed=None, mode="klasik", with_audio=True,
     squares = [Square(n, c, rng) for n, c in PARTICIPANTS]
     renderer = Renderer()
     with VideoWriter(output, with_audio, progress) as video:
+        video.write_intro(renderer, CONCEPT["nama"])
         frame, events, winner, reason, end_frame, eliminations = _simulate(
             squares, renderer, video, rng, mode, max_seconds)
         video.finish(events, seed)
@@ -159,7 +160,7 @@ def render(output="battle.mp4", seed=None, mode="klasik", with_audio=True,
         "pemenang": winner.name,
         "alasan": reason,
         "durasi_pertandingan": round(end_frame / FPS, 2),
-        "durasi_video": round(frame / FPS, 2),
+        "durasi_video": round(video.frames / FPS, 2),
         "eliminasi": eliminations,
         "statistik": {"hp_pemenang": max(winner.hp, 0),
                       "jumlah_tabrakan": sum(1 for k, _ in events if k == "hit")},

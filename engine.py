@@ -12,6 +12,7 @@ import audio
 
 W, H, FPS = 1080, 1920, 60
 WINNER_SECONDS = 3
+INTRO_SECONDS = 2
 
 BG = (18, 18, 28)
 WHITE = (255, 255, 255)
@@ -50,6 +51,20 @@ class Canvas:
         self.text(self.font_small, f"Mode: {mode.upper()}", GRAY, (W // 2, 300))
         self.text(self.font_mid, f"{seconds}s / {max_seconds}s", (200, 200, 210), (W // 2, 390))
 
+    def intro(self, title):
+        """Kartu pembuka singkat untuk memberi konteks dan hook pada video."""
+        self.screen.fill(BG)
+        pygame.draw.circle(self.screen, (38, 31, 54), (W // 2, 780), 330)
+        pygame.draw.circle(self.screen, (72, 48, 91), (W // 2, 780), 330, 5)
+        self.text(self.font_mid, "PERTANDINGAN DIMULAI", (190, 185, 210), (W // 2, 390))
+        img = self.font_big.render(title.upper(), True, WHITE)
+        if img.get_width() > W - 100:
+            scale = (W - 100) / img.get_width()
+            img = pygame.transform.smoothscale(img, (W - 100, int(img.get_height() * scale)))
+        self.screen.blit(img, img.get_rect(center=(W // 2, 760)))
+        self.text(self.font_mid, "TEBAK PEMENANGNYA!", (255, 210, 90), (W // 2, 1130))
+        self.text(self.font_small, "Tulis pilihanmu di komentar", GRAY, (W // 2, 1200))
+
     def banner(self, title, color, reason, center):
         box = self.overlay.get_rect(center=center)
         self.screen.blit(self.overlay, box)
@@ -70,6 +85,7 @@ class VideoWriter:
         self.video_path = output + ".video.mp4" if with_audio else output
         self.wav_path = output + ".audio.wav"
         self.frames = 0
+        self.event_offset = 0
         self.proc = subprocess.Popen(
             ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
              "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
@@ -90,13 +106,21 @@ class VideoWriter:
         if self.progress and self.frames % 30 == 0:
             self.progress(self.frames)
 
+    def write_intro(self, canvas, title):
+        canvas.intro(title)
+        count = INTRO_SECONDS * FPS
+        for _ in range(count):
+            self.write(canvas)
+        self.event_offset += count
+
     def finish(self, events, seed):
         self.proc.stdin.close()
         if self.proc.wait() != 0:
             raise RuntimeError(f"FFmpeg gagal menulis {self.video_path}")
         if not self.with_audio:
             return
-        audio.build_soundtrack(self.wav_path, events, FPS, self.frames, seed=seed)
+        shifted_events = [(kind, frame + self.event_offset) for kind, frame in events]
+        audio.build_soundtrack(self.wav_path, shifted_events, FPS, self.frames, seed=seed)
         result = subprocess.run(
             ["ffmpeg", "-y", "-loglevel", "error", "-i", self.video_path, "-i", self.wav_path,
              "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", self.output])

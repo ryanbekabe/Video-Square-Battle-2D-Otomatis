@@ -16,7 +16,7 @@ from urllib.parse import unquote, urlparse
 
 import concepts
 import production
-from engine import FPS, WINNER_SECONDS, Cancelled
+from engine import FPS, INTRO_SECONDS, WINNER_SECONDS, Cancelled
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(ROOT, "dashboard")
@@ -83,7 +83,7 @@ class JobQueue:
             job = self._next()
             concept = concepts.CONCEPTS[job["konsep"]].CONCEPT
             max_seconds = job["max_seconds"] or concept["durasi_maks"]
-            total = (max_seconds + WINNER_SECONDS) * FPS
+            total = (max_seconds + INTRO_SECONDS + WINNER_SECONDS) * FPS
 
             def progress(frames, job=job):
                 if job["batal"]:

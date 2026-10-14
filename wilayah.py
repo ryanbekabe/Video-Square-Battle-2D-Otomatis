@@ -171,6 +171,7 @@ def render(output="wilayah.mp4", seed=None, mode="klasik", with_audio=True,
     renderer = Renderer()
 
     with VideoWriter(output, with_audio, progress) as video:
+        video.write_intro(renderer, CONCEPT["nama"])
         frame, winner, end_frame, reason = 0, None, None, ""
         events, star = [], None
         while True:
@@ -221,7 +222,7 @@ def render(output="wilayah.mp4", seed=None, mode="klasik", with_audio=True,
         "pemenang": winner.name,
         "alasan": reason,
         "durasi_pertandingan": round(end_frame / FPS, 2),
-        "durasi_video": round(frame / FPS, 2),
+        "durasi_video": round(video.frames / FPS, 2),
         "eliminasi": [],
         "statistik": {
             "wilayah_persen": {p.name: round(100 * floor.counts[p.idx] / total, 1) for p in painters},

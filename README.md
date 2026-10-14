@@ -30,7 +30,7 @@ Video dibuat dari simulasi fisika sederhana yang direkam frame demi frame:
 
 - **Resolusi:** 1080 × 1920 (vertikal, cocok untuk YouTube Shorts)
 - **Frame rate:** 60 FPS
-- **Durasi maksimum:** 90 detik pertandingan + 3 detik layar pemenang
+- **Durasi maksimum:** 90 detik pertandingan + 2 detik kartu pembuka + 3 detik layar pemenang
 - **Peserta:** 6 kotak (Merah, Biru, Hijau, Kuning, Ungu, Oranye)
 - **Aturan:** setiap tabrakan mengurangi HP 5–15 poin; kotak dengan HP 0 tereliminasi; kotak terakhir yang bertahan menang. Jika waktu habis, pemenangnya adalah kotak dengan HP tertinggi.
 
@@ -86,6 +86,9 @@ Dashboard hanya bisa diakses dari komputer ini (`127.0.0.1`). Fiturnya:
 - **Antrean** — progres render secara langsung, tombol batal, dan riwayat (render berjalan satu per satu).
 - **Galeri** — putar video, filter per konsep, cari pemenang, salin judul/deskripsi + tagar, unduh, render ulang dengan seed yang sama, hapus.
 - **Klasemen** — jumlah kemenangan dan rasio menang setiap peserta per konsep.
+
+Setiap video diawali kartu pembuka 2 detik yang memperkenalkan konsep dan mengajak penonton
+menebak pemenang. Statistik pertandingan juga disertakan dalam deskripsi unggahan otomatis.
 
 ### Hasil di folder `output/`
 
